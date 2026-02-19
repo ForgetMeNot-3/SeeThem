@@ -51,8 +51,7 @@
         border-bottom: 1px solid #666;
       }
 
-      .floor-btn,
-      .mode-btn {
+      .floor-btn {
         padding: 12px 25px;
         font-size: 1.1em;
         border: 2px solid;
@@ -83,41 +82,6 @@
         background: #000;
         box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
         border-color: #fff;
-      }
-
-      .mode-btn {
-        background: #ff6b35;
-        color: #fff;
-        border-color: #cc552a;
-        min-width: 100px;
-      }
-
-      .mode-btn:hover {
-        background: #e55a2b;
-        transform: translateY(-2px);
-        border-color: #ff6b35;
-      }
-
-      .mode-btn.active {
-        background: #cc552a;
-        box-shadow: 0 0 15px rgba(255, 107, 53, 0.4);
-        border-color: #fff;
-      }
-
-      .edit-mode .clickable-area {
-        cursor: move;
-        border-style: dashed;
-        border-color: #ff6b35;
-      }
-
-      .edit-mode .clickable-area:hover {
-        border-color: #ff6b35;
-      }
-
-      .edit-mode .clickable-area.dragging {
-        opacity: 0.8;
-        z-index: 1000;
-        box-shadow: 0 0 10px rgba(255, 107, 53, 0.6);
       }
 
       .floor-content {
@@ -248,13 +212,12 @@
         <button class="floor-btn" data-floor="2">二层</button>
         <button class="floor-btn" data-floor="3">三层</button>
         <button class="floor-btn" data-floor="4">四层</button>
-        <button class="mode-btn" id="toggle-mode">切换模式</button>
       </div>
 
       <div class="floor-content">
         <div class="floor-info">当前查看：一层 - 大厅区域</div>
         <img
-          src="图片/一层.png"
+          src="assets/images/一层.png"
           alt="一层平面图"
           class="floor-image"
           id="floor-image"
@@ -272,18 +235,10 @@
     </div>
 
     <script>
-      // 编辑模式功能
-      let isEditMode = false;
-      let isDragging = false;
-      let dragElement = null;
-      let startX, startY, startLeft, startTop;
-
       // 获取DOM元素
-      const container = document.querySelector(".container");
       const floorBtns = document.querySelectorAll(".floor-btn");
       const floorImage = document.getElementById("floor-image");
       const floorInfo = document.querySelector(".floor-info");
-      const toggleModeBtn = document.getElementById("toggle-mode");
 
       // 模态框元素
       const modal = document.getElementById("info-modal");
@@ -291,161 +246,22 @@
       const modalDesc = document.getElementById("modal-description");
       const closeModal = document.getElementById("close-modal");
 
-      // 切换编辑模式
-      toggleModeBtn.addEventListener("click", function () {
-        isEditMode = !isEditMode;
-
-        if (isEditMode) {
-          container.classList.add("edit-mode");
-          toggleModeBtn.classList.add("active");
-          toggleModeBtn.textContent = "退出编辑";
-          console.log("进入编辑模式");
-        } else {
-          container.classList.remove("edit-mode");
-          toggleModeBtn.classList.remove("active");
-          toggleModeBtn.textContent = "切换模式";
-          console.log("退出编辑模式");
-        }
-      });
-
-      // 拖拽功能
-      function initDragEvents(element) {
-        // 鼠标按下事件
-        element.addEventListener("mousedown", function (e) {
-          if (!isEditMode) return;
-
-          e.preventDefault();
-          isDragging = true;
-          dragElement = this;
-
-          // 记录初始位置
-          startX = e.clientX;
-          startY = e.clientY;
-
-          // 获取当前元素的位置（处理百分比和像素值）
-          const currentLeft = this.style.left;
-          const currentTop = this.style.top;
-
-          // 如果是百分比，转换为像素值
-          if (currentLeft.includes("%")) {
-            const containerWidth = container.offsetWidth;
-            startLeft = (parseFloat(currentLeft) / 100) * containerWidth;
-          } else {
-            startLeft = parseInt(currentLeft) || 0;
-          }
-
-          if (currentTop.includes("%")) {
-            const containerHeight = container.offsetHeight;
-            startTop = (parseFloat(currentTop) / 100) * containerHeight;
-          } else {
-            startTop = parseInt(currentTop) || 0;
-          }
-
-          // 添加拖拽样式
-          this.classList.add("dragging");
-        });
-
-        // 触摸按下事件（移动端支持）
-        element.addEventListener("touchstart", function (e) {
-          if (!isEditMode) return;
-
-          e.preventDefault();
-          isDragging = true;
-          dragElement = this;
-
-          const touch = e.touches[0];
-          startX = touch.clientX;
-          startY = touch.clientY;
-
-          const currentLeft = this.style.left;
-          const currentTop = this.style.top;
-
-          if (currentLeft.includes("%")) {
-            const containerWidth = container.offsetWidth;
-            startLeft = (parseFloat(currentLeft) / 100) * containerWidth;
-          } else {
-            startLeft = parseInt(currentLeft) || 0;
-          }
-
-          if (currentTop.includes("%")) {
-            const containerHeight = container.offsetHeight;
-            startTop = (parseFloat(currentTop) / 100) * containerHeight;
-          } else {
-            startTop = parseInt(currentTop) || 0;
-          }
-
-          this.classList.add("dragging");
+      // 点击区域功能
+      function initClickEvents(element) {
+        // 添加点击事件
+        element.addEventListener("click", function () {
+          showModal(
+            this.getAttribute("data-name"),
+            this.getAttribute("data-description")
+          );
         });
       }
-
-      // 文档级别的移动和结束事件
-      document.addEventListener("mousemove", function (e) {
-        if (!isDragging || !dragElement) return;
-
-        e.preventDefault();
-        const deltaX = e.clientX - startX;
-        const deltaY = e.clientY - startY;
-
-        // 计算新位置
-        const newLeft = startLeft + deltaX;
-        const newTop = startTop + deltaY;
-
-        // 限制在容器范围内
-        const containerRect = container.getBoundingClientRect();
-        const areaRect = dragElement.getBoundingClientRect();
-
-        const maxLeft = containerRect.width - areaRect.width;
-        const maxTop = containerRect.height - areaRect.height;
-
-        // 确保位置在合理范围内
-        const finalLeft = Math.max(0, Math.min(newLeft, maxLeft));
-        const finalTop = Math.max(0, Math.min(newTop, maxTop));
-
-        dragElement.style.left = finalLeft + "px";
-        dragElement.style.top = finalTop + "px";
-      });
-
-      document.addEventListener("touchmove", function (e) {
-        if (!isDragging || !dragElement) return;
-
-        e.preventDefault();
-        const touch = e.touches[0];
-        const deltaX = touch.clientX - startX;
-        const deltaY = touch.clientY - startY;
-
-        const newLeft = startLeft + deltaX;
-        const newTop = startTop + deltaY;
-
-        const containerRect = container.getBoundingClientRect();
-        const areaRect = dragElement.getBoundingClientRect();
-
-        const maxLeft = containerRect.width - areaRect.width;
-        const maxTop = containerRect.height - areaRect.height;
-
-        const finalLeft = Math.max(0, Math.min(newLeft, maxLeft));
-        const finalTop = Math.max(0, Math.min(newTop, maxTop));
-
-        dragElement.style.left = finalLeft + "px";
-        dragElement.style.top = finalTop + "px";
-      });
-
-      // 结束拖拽
-      function endDrag() {
-        if (dragElement) {
-          dragElement.classList.remove("dragging");
-          dragElement = null;
-        }
-        isDragging = false;
-      }
-
-      document.addEventListener("mouseup", endDrag);
-      document.addEventListener("touchend", endDrag);
 
       // 楼层信息配置
       const floorConfig = {
         1: {
           name: "一层 - 大厅区域",
-          image: "图片/一层.png",
+          image: "assets/images/一层.png",
           areas: [
             {
               left: "30%",
@@ -523,7 +339,7 @@
         },
         2: {
           name: "二层 - 办公区域",
-          image: "图片/二层.png",
+          image: "assets/images/二层.png",
           areas: [
             {
               left: "25%",
@@ -553,7 +369,7 @@
         },
         3: {
           name: "三层 - 功能区域",
-          image: "图片/三层.png",
+          image: "assets/images/三层.png",
           areas: [
             {
               left: "30%",
@@ -583,7 +399,7 @@
         },
         4: {
           name: "四层 - 休闲区域",
-          image: "图片/四层.png",
+          image: "assets/images/四层.png",
           areas: [
             {
               left: "35%",
@@ -650,16 +466,8 @@
                 .querySelector(".floor-content")
                 .appendChild(clickableArea);
 
-              // 初始化拖拽事件
-              initDragEvents(clickableArea);
-
-              // 添加点击事件
-              clickableArea.addEventListener("click", function () {
-                showModal(
-                  this.getAttribute("data-name"),
-                  this.getAttribute("data-description")
-                );
-              });
+              // 初始化点击事件
+              initClickEvents(clickableArea);
             });
           }
         });
