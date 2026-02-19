@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>建筑可视化系统</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "楷体", "KaiTi", "STKaiti", serif;
+        background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
+        min-height: 100vh;
+        padding: 20px;
+        color: #333;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: #fff;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        border: 1px solid #ccc;
+      }
+
+      .header {
+        background: #000;
+        color: #fff;
+        padding: 20px;
+        text-align: center;
+        border-bottom: 2px solid #666;
+      }
+
+      .header h1 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+      }
+
+      .floor-controls {
+        display: flex;
+        justify-content: center;
+        gap: 15px;
+        padding: 20px;
+        background: #333;
+        border-bottom: 1px solid #666;
+      }
+
+      .floor-btn,
+      .mode-btn {
+        padding: 12px 25px;
+        font-size: 1.1em;
+        border: 2px solid;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-family: "楷体", "KaiTi", "STKaiti", serif;
+        min-width: 80px;
+        white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .floor-btn {
+        background: #666;
+        color: #fff;
+        border-color: #333;
+      }
+
+      .floor-btn:hover {
+        background: #444;
+        transform: translateY(-2px);
+        border-color: #000;
+      }
+
+      .floor-btn.active {
+        background: #000;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.3);
+        border-color: #fff;
+      }
+
+      .mode-btn {
+        background: #ff6b35;
+        color: #fff;
+        border-color: #cc552a;
+        min-width: 100px;
+      }
+
+      .mode-btn:hover {
+        background: #e55a2b;
+        transform: translateY(-2px);
+        border-color: #ff6b35;
+      }
+
+      .mode-btn.active {
+        background: #cc552a;
+        box-shadow: 0 0 15px rgba(255, 107, 53, 0.4);
+        border-color: #fff;
+      }
+
+      .edit-mode .clickable-area {
+        cursor: move;
+        border-style: dashed;
+        border-color: #ff6b35;
+      }
+
+      .edit-mode .clickable-area:hover {
+        border-color: #ff6b35;
+      }
+
+      .edit-mode .clickable-area.dragging {
+        opacity: 0.8;
+        z-index: 1000;
+        box-shadow: 0 0 10px rgba(255, 107, 53, 0.6);
+      }
+
+      .floor-content {
+        position: relative;
+        padding: 30px;
+        min-height: 600px;
+      }
+
+      .floor-info {
+        text-align: center;
+        margin-bottom: 20px;
+        color: #7f8c8d;
+        font-size: 1.2em;
+      }
+
+      .floor-image {
+        width: 100%;
+        max-width: 800px;
+        margin: 0 auto;
+        display: block;
+        border: 3px solid #999;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        filter: grayscale(100%);
+      }
+
+      .clickable-area {
+        position: absolute;
+        padding: 6px 12px;
+        font-size: 0.9em;
+        background: transparent;
+        color: #000;
+        border: 2px solid #333;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-family: "楷体", "KaiTi", "STKaiti", serif;
+        white-space: nowrap;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      }
+
+      .clickable-area:hover {
+        background: rgba(0, 0, 0, 0.1);
+        transform: translateY(-1px);
+        border-color: #000;
+      }
+
+      .clickable-area.active {
+        background: rgba(0, 0, 0, 0.2);
+        box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
+        border-color: #000;
+      }
+
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .modal-content {
+        background: #fff;
+        padding: 30px;
+        border-radius: 15px;
+        max-width: 500px;
+        width: 90%;
+        position: relative;
+        animation: modalShow 0.3s ease;
+        border: 2px solid #000;
+        color: #333;
+        font-family: "楷体", "KaiTi", "STKaiti", serif;
+      }
+
+      @keyframes modalShow {
+        from {
+          transform: scale(0.8);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      .close-btn {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        font-size: 24px;
+        cursor: pointer;
+        color: #7f8c8d;
+      }
+
+      .close-btn:hover {
+        color: #e74c3c;
+      }
+
+      .modal h2 {
+        color: #2c3e50;
+        margin-bottom: 15px;
+      }
+
+      .modal p {
+        line-height: 1.6;
+        color: #34495e;
+        margin-bottom: 15px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>建筑可视化系统</h1>
+        <p>点击对应楼层查看不同楼层，点击即可查看详细信息</p>
+      </div>
+
+      <div class="floor-controls">
+        <button class="floor-btn active" data-floor="1">一层</button>
+        <button class="floor-btn" data-floor="2">二层</button>
+        <button class="floor-btn" data-floor="3">三层</button>
+        <button class="floor-btn" data-floor="4">四层</button>
+        <button class="mode-btn" id="toggle-mode">切换模式</button>
+      </div>
+
+      <div class="floor-content">
+        <div class="floor-info">当前查看：一层 - 大厅区域</div>
+        <img
+          src="图片/一层.png"
+          alt="一层平面图"
+          class="floor-image"
+          id="floor-image"
+        />
+      </div>
+    </div>
+
+    <!-- 弹出介绍界面 -->
+    <div class="modal" id="info-modal">
+      <div class="modal-content">
+        <span class="close-btn" id="close-modal">&times;</span>
+        <h2 id="modal-title">房间/物品介绍</h2>
+        <p id="modal-description">这里是详细的介绍内容...</p>
+      </div>
+    </div>
+
+    <script>
+      // 编辑模式功能
+      let isEditMode = false;
+      let isDragging = false;
+      let dragElement = null;
+      let startX, startY, startLeft, startTop;
+
+      // 获取DOM元素
+      const container = document.querySelector(".container");
+      const floorBtns = document.querySelectorAll(".floor-btn");
+      const floorImage = document.getElementById("floor-image");
+      const floorInfo = document.querySelector(".floor-info");
+      const toggleModeBtn = document.getElementById("toggle-mode");
+
+      // 模态框元素
+      const modal = document.getElementById("info-modal");
+      const modalTitle = document.getElementById("modal-title");
+      const modalDesc = document.getElementById("modal-description");
+      const closeModal = document.getElementById("close-modal");
+
+      // 切换编辑模式
+      toggleModeBtn.addEventListener("click", function () {
+        isEditMode = !isEditMode;
+
+        if (isEditMode) {
+          container.classList.add("edit-mode");
+          toggleModeBtn.classList.add("active");
+          toggleModeBtn.textContent = "退出编辑";
+          console.log("进入编辑模式");
+        } else {
+          container.classList.remove("edit-mode");
+          toggleModeBtn.classList.remove("active");
+          toggleModeBtn.textContent = "切换模式";
+          console.log("退出编辑模式");
+        }
+      });
+
+      // 拖拽功能
+      function initDragEvents(element) {
+        // 鼠标按下事件
+        element.addEventListener("mousedown", function (e) {
+          if (!isEditMode) return;
+
+          e.preventDefault();
+          isDragging = true;
+          dragElement = this;
+
+          // 记录初始位置
+          startX = e.clientX;
+          startY = e.clientY;
+
+          // 获取当前元素的位置（处理百分比和像素值）
+          const currentLeft = this.style.left;
+          const currentTop = this.style.top;
+
+          // 如果是百分比，转换为像素值
+          if (currentLeft.includes("%")) {
+            const containerWidth = container.offsetWidth;
+            startLeft = (parseFloat(currentLeft) / 100) * containerWidth;
+          } else {
+            startLeft = parseInt(currentLeft) || 0;
+          }
+
+          if (currentTop.includes("%")) {
+            const containerHeight = container.offsetHeight;
+            startTop = (parseFloat(currentTop) / 100) * containerHeight;
+          } else {
+            startTop = parseInt(currentTop) || 0;
+          }
+
+          // 添加拖拽样式
+          this.classList.add("dragging");
+        });
+
+        // 触摸按下事件（移动端支持）
+        element.addEventListener("touchstart", function (e) {
+          if (!isEditMode) return;
+
+          e.preventDefault();
+          isDragging = true;
+          dragElement = this;
+
+          const touch = e.touches[0];
+          startX = touch.clientX;
+          startY = touch.clientY;
+
+          const currentLeft = this.style.left;
+          const currentTop = this.style.top;
+
+          if (currentLeft.includes("%")) {
+            const containerWidth = container.offsetWidth;
+            startLeft = (parseFloat(currentLeft) / 100) * containerWidth;
+          } else {
+            startLeft = parseInt(currentLeft) || 0;
+          }
+
+          if (currentTop.includes("%")) {
+            const containerHeight = container.offsetHeight;
+            startTop = (parseFloat(currentTop) / 100) * containerHeight;
+          } else {
+            startTop = parseInt(currentTop) || 0;
+          }
+
+          this.classList.add("dragging");
+        });
+      }
+
+      // 文档级别的移动和结束事件
+      document.addEventListener("mousemove", function (e) {
+        if (!isDragging || !dragElement) return;
+
+        e.preventDefault();
+        const deltaX = e.clientX - startX;
+        const deltaY = e.clientY - startY;
+
+        // 计算新位置
+        const newLeft = startLeft + deltaX;
+        const newTop = startTop + deltaY;
+
+        // 限制在容器范围内
+        const containerRect = container.getBoundingClientRect();
+        const areaRect = dragElement.getBoundingClientRect();
+
+        const maxLeft = containerRect.width - areaRect.width;
+        const maxTop = containerRect.height - areaRect.height;
+
+        // 确保位置在合理范围内
+        const finalLeft = Math.max(0, Math.min(newLeft, maxLeft));
+        const finalTop = Math.max(0, Math.min(newTop, maxTop));
+
+        dragElement.style.left = finalLeft + "px";
+        dragElement.style.top = finalTop + "px";
+      });
+
+      document.addEventListener("touchmove", function (e) {
+        if (!isDragging || !dragElement) return;
+
+        e.preventDefault();
+        const touch = e.touches[0];
+        const deltaX = touch.clientX - startX;
+        const deltaY = touch.clientY - startY;
+
+        const newLeft = startLeft + deltaX;
+        const newTop = startTop + deltaY;
+
+        const containerRect = container.getBoundingClientRect();
+        const areaRect = dragElement.getBoundingClientRect();
+
+        const maxLeft = containerRect.width - areaRect.width;
+        const maxTop = containerRect.height - areaRect.height;
+
+        const finalLeft = Math.max(0, Math.min(newLeft, maxLeft));
+        const finalTop = Math.max(0, Math.min(newTop, maxTop));
+
+        dragElement.style.left = finalLeft + "px";
+        dragElement.style.top = finalTop + "px";
+      });
+
+      // 结束拖拽
+      function endDrag() {
+        if (dragElement) {
+          dragElement.classList.remove("dragging");
+          dragElement = null;
+        }
+        isDragging = false;
+      }
+
+      document.addEventListener("mouseup", endDrag);
+      document.addEventListener("touchend", endDrag);
+
+      // 楼层信息配置
+      const floorConfig = {
+        1: {
+          name: "一层 - 大厅区域",
+          image: "图片/一层.png",
+          areas: [
+            {
+              left: "30%",
+              top: "49%",
+              width: "100px",
+              height: "70px",
+              name: "玄关",
+              desc: "入门处，有木质的鞋架和衣帽架，地上铺了黑色的地毯。",
+            },
+            {
+              left: "47%",
+              top: "32%",
+              width: "60px",
+              height: "70px",
+              name: "主客厅",
+              desc: "有一张长桌，桌上铺有奶白色桌布。桌边有8张檀木靠背椅，有坐垫及靠垫。客厅四角分别有四种不同颜色的植株。和会议室相邻，之间有大型双向玻璃。",
+            },
+            {
+              left: "30.8%",
+              top: "31.5%",
+              width: "60px",
+              height: "60px",
+              name: "会议室",
+              desc: "正中摆一张圆形桌，桌边一圈8张金丝楠木靠背椅，有坐垫及靠垫。最角落有一株小型松柏。和主客厅相邻，之间有大型双向玻璃。",
+            },
+            {
+              left: "36%",
+              top: "66.5%",
+              width: "60px",
+              height: "80px",
+              name: "副客厅",
+              desc: "舒适的休息区域，配备沙发、茶几和阅读材料。角落有存放食物的冰柜。南侧有大型落地窗通向花园。",
+            },
+            {
+              left: "30.2%",
+              top: "70%",
+              width: "48px",
+              height: "80px",
+              name: "杂物间",
+              desc: "堆放杂物的房间，有三排平行的货架。东北角有一个上及天花板的货柜，靠门一侧有大型货箱。这里暂时空无一物。",
+            },
+            {
+              left: "71.7%",
+              top: "32%",
+              width: "60px",
+              height: "70px",
+              name: "电梯",
+              desc: "高速电梯系统，连接所有楼层。配备安全监控和紧急呼叫系统。",
+            },
+            {
+              left: "66.5%",
+              top: "34%",
+              width: "60px",
+              height: "70px",
+              name: "楼梯",
+              desc: "木质楼梯，连接所有楼层。每段13级，每层两段。",
+            },
+            {
+              left: "68.5%",
+              top: "62%",
+              width: "80px",
+              height: "40px",
+              name: "公共卫生间",
+              desc: "有坐便、浴缸，2米高处有通风窗。",
+            },
+            {
+              left: "56%",
+              top: "62%",
+              width: "70px",
+              height: "40px",
+              name: "厨房",
+              desc: "很常见的厨房，1米高处有通风窗。",
+            },
+          ],
+        },
+        2: {
+          name: "二层 - 办公区域",
+          image: "图片/二层.png",
+          areas: [
+            {
+              left: "25%",
+              top: "35%",
+              width: "110px",
+              height: "85px",
+              name: "会议室A",
+              desc: "中型会议室，配备投影设备和视频会议系统。可容纳15人同时开会。",
+            },
+            {
+              left: "45%",
+              top: "55%",
+              width: "95px",
+              height: "75px",
+              name: "办公室",
+              desc: "开放式办公区域，为员工提供舒适的工作环境。配备人体工学椅和充足的自然光。",
+            },
+            {
+              left: "65%",
+              top: "40%",
+              width: "105px",
+              height: "80px",
+              name: "茶水间",
+              desc: "员工休息区域，配备咖啡机、微波炉和冰箱。提供舒适的休息环境。",
+            },
+          ],
+        },
+        3: {
+          name: "三层 - 功能区域",
+          image: "图片/三层.png",
+          areas: [
+            {
+              left: "30%",
+              top: "45%",
+              width: "120px",
+              height: "90px",
+              name: "实验室",
+              desc: "专业实验室，配备先进的实验设备和安全防护设施。用于科研和技术开发。",
+            },
+            {
+              left: "55%",
+              top: "35%",
+              width: "100px",
+              height: "85px",
+              name: "资料室",
+              desc: "存放重要文件和资料的专用房间。配备防火防盗系统和温湿度控制。",
+            },
+            {
+              left: "70%",
+              top: "60%",
+              width: "90px",
+              height: "75px",
+              name: "设备间",
+              desc: "存放和维护建筑设备的专用空间。确保建筑各项系统的正常运行。",
+            },
+          ],
+        },
+        4: {
+          name: "四层 - 休闲区域",
+          image: "图片/四层.png",
+          areas: [
+            {
+              left: "35%",
+              top: "40%",
+              width: "115px",
+              height: "85px",
+              name: "健身房",
+              desc: "员工健身区域，配备多种健身器材。促进员工身心健康和工作效率。",
+            },
+            {
+              left: "50%",
+              top: "55%",
+              width: "105px",
+              height: "80px",
+              name: "餐厅",
+              desc: "员工餐厅，提供营养均衡的餐食。环境舒适，可容纳50人同时就餐。",
+            },
+            {
+              left: "75%",
+              top: "35%",
+              width: "95px",
+              height: "70px",
+              name: "露台",
+              desc: "户外休闲空间，提供优美的城市景观。适合休息和社交活动。",
+            },
+          ],
+        },
+      };
+
+      // 楼层切换事件
+      floorBtns.forEach((btn) => {
+        btn.addEventListener("click", function () {
+          // 更新按钮状态
+          floorBtns.forEach((b) => b.classList.remove("active"));
+          this.classList.add("active");
+
+          const floorNum = this.getAttribute("data-floor");
+          const floorData = floorConfig[floorNum];
+
+          if (floorData) {
+            // 更新楼层信息
+            floorInfo.textContent = `当前查看：${floorData.name}`;
+            floorImage.src = floorData.image;
+            floorImage.alt = floorData.name;
+
+            // 移除现有可点击区域
+            document
+              .querySelectorAll(".clickable-area")
+              .forEach((area) => area.remove());
+
+            // 创建新的可点击区域
+            floorData.areas.forEach((area) => {
+              const clickableArea = document.createElement("div");
+              clickableArea.className = "clickable-area";
+              clickableArea.style.left = area.left;
+              clickableArea.style.top = area.top;
+              clickableArea.style.width = area.width;
+              clickableArea.style.height = area.height;
+              clickableArea.setAttribute("data-name", area.name);
+              clickableArea.setAttribute("data-description", area.desc);
+              clickableArea.textContent = area.name;
+
+              document
+                .querySelector(".floor-content")
+                .appendChild(clickableArea);
+
+              // 初始化拖拽事件
+              initDragEvents(clickableArea);
+
+              // 添加点击事件
+              clickableArea.addEventListener("click", function () {
+                showModal(
+                  this.getAttribute("data-name"),
+                  this.getAttribute("data-description")
+                );
+              });
+            });
+          }
+        });
+      });
+
+      // 显示模态框
+      function showModal(title, description) {
+        modalTitle.textContent = title;
+        modalDesc.textContent = description || "暂无详细信息";
+        modal.style.display = "flex";
+      }
+
+      // 关闭模态框
+      closeModal.addEventListener("click", function () {
+        modal.style.display = "none";
+      });
+
+      // 点击模态框外部关闭
+      modal.addEventListener("click", function (e) {
+        if (e.target === modal) {
+          modal.style.display = "none";
+        }
+      });
+
+      // 初始化页面
+      document.addEventListener("DOMContentLoaded", function () {
+        // 触发一层按钮的点击事件来初始化页面
+        document.querySelector('.floor-btn[data-floor="1"]').click();
+      });
+    </script>
+  </body>
+</html>
